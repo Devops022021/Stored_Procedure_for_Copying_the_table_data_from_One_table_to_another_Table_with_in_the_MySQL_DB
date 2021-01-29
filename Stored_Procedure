@@ -1,0 +1,27 @@
+CREATE DATABASE IF NOT EXISTS test;
+DROP PROCEDURE IF EXISTS test.Copy_Data;
+
+DELIMITER //
+CREATE PROCEDURE Copy_Data(dbname varchar(64),source_tablename varchar(64),target_tablename varchar(64))
+BEGIN
+
+   DECLARE mydbname VARCHAR(1024);
+   SET mydbname = dbname;
+
+   SET @var_source_column_list = "";
+   SELECT GROUP_CONCAT(COLUMN_NAME order by ordinal_position separator ', ') INTO @var_source_column_list
+   FROM INFORMATION_SCHEMA.COLUMNS 
+   WHERE TABLE_NAME = source_tablename AND TABLE_SCHEMA = dbname;
+    
+    SET @sql_push_data = CONCAT( "INSERT INTO ", dbname, ".", target_tablename,"
+                                  (", @var_source_column_list, ") SELECT a.", replace(@var_source_column_list, ', ', ', a.'), " 
+                                  FROM ", dbname,".",source_tablename, " a left outer join ", dbname, ".", target_tablename, 
+                                  " b on a.id = b.id and b.id is NULL"
+                               );   
+ 	select @sql_push_data;    
+        PREPARE STMT FROM @sql_push_data;
+        EXECUTE STMT;
+        DEALLOCATE PREPARE STMT;
+    
+END//
+DELIMITER ;
